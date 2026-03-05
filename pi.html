@@ -18,136 +18,264 @@
 
 <script type="text/babel">
 
-const { useState, useEffect } = React;
+const {useState,useEffect} = React;
 
-// Spigot algorithm to generate digits of π progressively
-function generatePiDigits(count) {
-  const digits = [];
-  const len = Math.floor((10 * count) / 3) + 1;
-  const a = new Array(len).fill(2);
+function generatePiDigits(count){
 
-  let nines = 0;
-  let predigit = 0;
+  const digits=[];
+  const len=Math.floor((10*count)/3)+1;
+  const a=new Array(len).fill(2);
 
-  for (let j = 0; j < count; j++) {
-    let q = 0;
+  let nines=0;
+  let predigit=0;
 
-    for (let i = len; i > 0; i--) {
-      const x = 10 * a[i - 1] + q * i;
-      a[i - 1] = x % (2 * i - 1);
-      q = Math.floor(x / (2 * i - 1));
+  for(let j=0;j<count;j++){
+
+    let q=0;
+
+    for(let i=len;i>0;i--){
+      const x=10*a[i-1]+q*i;
+      a[i-1]=x%(2*i-1);
+      q=Math.floor(x/(2*i-1));
     }
 
-    a[0] = q % 10;
-    q = Math.floor(q / 10);
+    a[0]=q%10;
+    q=Math.floor(q/10);
 
-    if (q === 9) {
+    if(q===9){
       nines++;
-    } else if (q === 10) {
-      digits.push(predigit + 1);
-      for (let k = 0; k < nines; k++) digits.push(0);
-      predigit = 0;
-      nines = 0;
-    } else {
-      digits.push(predigit);
-      predigit = q;
-      if (nines !== 0) {
-        for (let k = 0; k < nines; k++) digits.push(9);
-        nines = 0;
-      }
     }
+
+    else if(q===10){
+
+      digits.push(predigit+1);
+
+      for(let k=0;k<nines;k++) digits.push(0);
+
+      predigit=0;
+      nines=0;
+
+    }
+
+    else{
+
+      digits.push(predigit);
+      predigit=q;
+
+      if(nines!==0){
+
+        for(let k=0;k<nines;k++) digits.push(9);
+        nines=0;
+
+      }
+
+    }
+
   }
 
   digits.push(predigit);
+
   return digits.join("");
+
 }
 
-function PiGame() {
-  const [digits, setDigits] = useState(() => generatePiDigits(1000));
-  const [input, setInput] = useState("");
-  const [score, setScore] = useState(0);
-  const [record, setRecord] = useState(0);
-  const [message, setMessage] = useState("");
+function PiGame(){
 
-  useEffect(() => {
-    const r = localStorage.getItem("pi_record");
-    if (r) setRecord(Number(r));
-  }, []);
+  const [digits]=useState(()=>{
 
-  function ensureDigits(index) {
-    if (index >= digits.length - 5) {
-      const more = generatePiDigits(digits.length + 1000);
-      setDigits(more);
+    const raw=generatePiDigits(20000);
+
+    return "3."+raw.slice(2);
+
+  });
+
+  const [input,setInput]=useState("");
+  const [score,setScore]=useState(0);
+  const [record,setRecord]=useState(0);
+  const [message,setMessage]=useState("");
+
+  const [startIndex,setStartIndex]=useState(0);
+  const [started,setStarted]=useState(false);
+
+  const [keyboardMode,setKeyboardMode]=useState(false);
+
+  useEffect(()=>{
+
+    const r=localStorage.getItem("pi_record");
+
+    if(r) setRecord(Number(r));
+
+  },[]);
+
+  useEffect(()=>{
+
+    function handleKey(e){
+
+      if(!started || !keyboardMode) return;
+
+      if("0123456789.".includes(e.key)){
+        press(e.key);
+      }
+
     }
-  }
 
-  function press(val) {
-    if (message) return;
+    window.addEventListener("keydown",handleKey);
 
-    const nextIndex = input.length;
-    ensureDigits(nextIndex);
+    return ()=>window.removeEventListener("keydown",handleKey);
 
-    const correct = nextIndex === 1 ? "." : digits[nextIndex];
+  },[input,keyboardMode,started]);
 
-    if (val === correct) {
-      const newInput = input + val;
+  function press(val){
+
+    if(message || !started) return;
+
+    const nextIndex=startIndex+input.length;
+
+    const correct=digits[nextIndex];
+
+    if(val===correct){
+
+      const newInput=input+val;
+
       setInput(newInput);
-      const newScore = score + 1;
+
+      const newScore=score+1;
+
       setScore(newScore);
 
-      if (newScore > record) {
+      if(newScore>record){
+
         setRecord(newScore);
-        localStorage.setItem("pi_record", newScore);
+
+        localStorage.setItem("pi_record",newScore);
+
       }
-    } else {
+
+    }
+
+    else{
+
       setMessage(`Wrong! Correct digit was '${correct}'. Restarting...`);
-      setTimeout(() => {
+
+      setTimeout(()=>{
+
         setInput("");
         setScore(0);
         setMessage("");
-      }, 2000);
+        setStarted(false);
+
+      },2000);
+
     }
+
   }
 
-  const buttons = ["0","1","2","3","4","5","6","7","8","9","."];
+  function startGame(){
 
-  return (
-    <div className="min-h-screen flex flex-col items-center justify-center gap-6 p-6">
-      <h1 className="text-3xl font-bold">π Memory Game</h1>
+    setInput("");
+    setScore(0);
+    setMessage("");
+    setStarted(true);
 
-      <div className="text-lg">Score: {score}</div>
-      <div className="text-lg">Record: {record}</div>
+  }
 
-      <div className="bg-white rounded-2xl shadow p-4 w-80 text-center">
-        <div className="text-sm text-gray-500 mb-2">Your input</div>
-        <div className="font-mono text-lg break-all">{input || "Start with 3"}</div>
+  const before=digits.slice(0,startIndex);
+
+  const buttons=["0","1","2","3","4","5","6","7","8","9","."];
+
+  return(
+
+  <div className="min-h-screen flex flex-col items-center gap-6 p-6">
+
+    <h1 className="text-3xl font-bold">π Memory Game</h1>
+
+    <div>Score: {score}</div>
+    <div>Record: {record}</div>
+
+    <button
+      onClick={()=>setKeyboardMode(!keyboardMode)}
+      className="bg-purple-500 text-white px-4 py-2 rounded shadow"
+    >
+      {keyboardMode ? "Button Mode" : "Keyboard Mode"}
+    </button>
+
+    {!started &&
+
+      <div className="bg-white p-4 rounded-xl shadow text-center">
+
+        <div className="text-sm mb-2">Start index</div>
+
+        <input
+          type="number"
+          value={startIndex}
+          onChange={(e)=>setStartIndex(Number(e.target.value))}
+          className="border p-2 rounded w-32 text-center"
+        />
+
+        <button
+          onClick={startGame}
+          className="ml-3 bg-blue-500 text-white px-4 py-2 rounded"
+        >
+          Start
+        </button>
+
       </div>
 
-      {message && (
-        <div className="text-red-600 font-semibold">{message}</div>
-      )}
+    }
 
-      <div className="grid grid-cols-3 gap-3 w-64">
-        {buttons.map((b) => (
-          <button
-            key={b}
-            onClick={() => press(b)}
-            className="bg-white shadow rounded-2xl p-4 text-xl hover:bg-gray-200 active:scale-95"
-          >
-            {b}
-          </button>
-        ))}
-      </div>
+    <div className="bg-white p-4 rounded-xl shadow w-96 font-mono break-all">
 
-      <div className="text-xs text-gray-500 text-center max-w-xs">
-        Press the digits of π in order. Each correct decimal gives 1 point.
-      </div>
+      {before}
+
+      <span className="text-green-600 font-bold">
+        {input}
+      </span>
+
+      <span className="bg-yellow-300">
+        |
+      </span>
+
     </div>
+
+    {message &&
+      <div className="text-red-600">
+        {message}
+      </div>
+    }
+
+    <div className="grid grid-cols-3 gap-3 w-64">
+
+      {buttons.map(b=>(
+
+        <button
+          key={b}
+          disabled={keyboardMode}
+          onClick={()=>press(b)}
+          className={`rounded-xl p-4 text-xl shadow
+          ${keyboardMode ? "bg-gray-300" : "bg-white hover:bg-gray-200"}`}
+        >
+          {b}
+        </button>
+
+      ))}
+
+    </div>
+
+    <div className="text-xs text-gray-500 text-center max-w-xs">
+
+      Click buttons or enable keyboard mode to type digits.
+
+    </div>
+
+  </div>
+
   );
+
 }
 
-const root = ReactDOM.createRoot(document.getElementById("root"));
-root.render(<PiGame />);
+const root=ReactDOM.createRoot(document.getElementById("root"));
+
+root.render(<PiGame/>);
 
 </script>
 
